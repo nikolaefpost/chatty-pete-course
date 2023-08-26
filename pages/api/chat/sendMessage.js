@@ -17,13 +17,8 @@ export default async function handler(req) {
                 method: "POST",
                 body: JSON.stringify({
                     model: "gpt-3.5-turbo",
-                    messages: [
-                        {
-                            role: "user",
-                            content: message
-                        }
-                    ],
-                    // stream: true
+                    messages: [{role: "user", content: message}],
+                    stream: true,
                 })
             }
         )
