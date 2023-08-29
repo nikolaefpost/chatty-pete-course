@@ -5,16 +5,40 @@ import {streamReader} from "openai-edge-stream";
 import {v4 as uuid} from 'uuid';
 import {Message} from "../../components/Message";
 import {useRouter} from "next/router";
+import {getSession} from "@auth0/nextjs-auth0";
+import clientPromise from "../../lib/mongodb";
+import {ObjectId} from "mongodb";
 
 
-const ChatPage = ({chatId}) => {
+const ChatPage = ({chatId, title, messages = []}) => {
+    console.log("props", title)
     const [newChatId, setNewChatId] = useState(null);
     const [incomingMessage, setIncomingMessage] = useState("")
     const [messageText, setMessageText] = useState("");
     const [newChatMessages, setNewChatMessages] = useState([]);
     const [generatingResponse, setGeneratingResponse] = useState(false);
+    const [fullMessage, setFullMessage] = useState("");
     const router = useRouter()
 
+    //when our route changes
+    useEffect(() => {
+        setNewChatMessages([]);
+        setNewChatId(null);
+    }, [chatId])
+
+    // save the newly streamed message to new chat messages
+    useEffect(() => {
+        if (!generatingResponse && fullMessage) {
+            setNewChatMessages(prev => [...prev, {
+                _id: uuid(),
+                role: "assistant",
+                content: fullMessage
+            }])
+            setFullMessage("")
+        }
+    }, [generatingResponse, fullMessage])
+
+    // if we've created a new chat
     useEffect(() => {
         if (!generatingResponse && newChatId) {
             setNewChatId(null);
@@ -37,7 +61,7 @@ const ChatPage = ({chatId}) => {
             headers: {
                 "content-type": "application/json",
             },
-            body: JSON.stringify({message: messageText})
+            body: JSON.stringify({chatId, message: messageText})
         })
 
         const data = response.body;
@@ -46,27 +70,33 @@ const ChatPage = ({chatId}) => {
             return;
         }
         const reader = data.getReader();
+        let content = "";
         await streamReader(reader, (message) => {
             console.log("MESSAGE", message);
-            if (message.event === "newChat") {
+            if (message.event === "newChatId") {
                 setNewChatId(message.content);
             } else {
-                setIncomingMessage(prev => `${prev}${message.content}`)
+                setIncomingMessage(prev => `${prev}${message.content}`);
+                content = content + message.content;
             }
 
         })
+        setFullMessage(content)
+        setIncomingMessage("");
         setGeneratingResponse(false);
     }
+
+    const allMessages = [...messages, ...newChatMessages]
     return (
         <>
             <Head>
                 <title>New chat</title>
             </Head>
             <div className="grid h-screen grid-cols-[260px_1fr]">
-                <ChatSidebar chatId={chatId} />
+                <ChatSidebar chatId={chatId}/>
                 <div className="bg-gray-700 flex flex-col overflow-hidden">
                     <div className="flex-1 text-white overflow-scroll">
-                        {newChatMessages.map(item => (
+                        {allMessages.map(item => (
                             <Message key={item._id} role={item.role} content={item.content}/>
                         ))}
                         {!!incomingMessage && <Message role="assistant" content={incomingMessage}/>}
@@ -101,9 +131,28 @@ export default ChatPage;
 export const getServerSideProps = async (ctx) => {
     const chatId = ctx.params?.chatId?.[0] || null;
 
-    return {
-        props: {
-            chatId
+    if (chatId) {
+        const {user} = await getSession(ctx.req, ctx.res);
+        const client = await clientPromise;
+        const db = client.db("ChattyPete");
+        const chat = await db.collection("chats").findOne({
+            userId: user.sub,
+            _id: new ObjectId(chatId)
+        })
+        return {
+            props: {
+                chatId,
+                title: chat.title,
+                messages: chat.messages.map(message => ({
+                    ...message,
+                    _id: uuid()
+                }))
+            }
         }
     }
+    return {
+        props: {}
+    }
+
+
 }
