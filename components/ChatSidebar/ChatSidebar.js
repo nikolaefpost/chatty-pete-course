@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import Link from "next/link";
-import {FontAwesomeIcon} from "@fortawesome/react-fontawesome"
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 import {faMessage, faPlus, faRightFromBracket} from "@fortawesome/free-solid-svg-icons";
 
 export const ChatSidebar = ({chatId}) => {
@@ -29,7 +29,7 @@ export const ChatSidebar = ({chatId}) => {
                         key={chat._id}
                         className={`side-menu-item ${chatId === chat._id? "bg-gray-700 hover:bg-gray-700":""}`}
                     >
-                        <FontAwesomeIcon className=" mt-[4px]" icon={faMessage}/>
+                        <FontAwesomeIcon className=" mt-[4px] text-white/50" icon={faMessage}/>
                         <span
                             title={chat.title}
                             className="overflow-hidden text-ellipsis whitespace-nowrap"

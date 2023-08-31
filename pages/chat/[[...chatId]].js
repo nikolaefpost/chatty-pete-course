@@ -8,6 +8,8 @@ import {useRouter} from "next/router";
 import {getSession} from "@auth0/nextjs-auth0";
 import clientPromise from "../../lib/mongodb";
 import {ObjectId} from "mongodb";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
+import {faRobot} from "@fortawesome/free-solid-svg-icons";
 
 
 const ChatPage = ({chatId, title, messages = []}) => {
@@ -100,18 +102,28 @@ const ChatPage = ({chatId, title, messages = []}) => {
                 <ChatSidebar chatId={chatId}/>
                 <div className="bg-gray-700 flex flex-col overflow-hidden">
                     <div className="flex-1 flex flex-col-reverse text-white overflow-auto">
-                        <div className="mb-auto ">
-                            {allMessages.map(item => (
-                                <Message key={item._id} role={item.role} content={item.content}/>
-                            ))}
-                            {!!incomingMessage && !routeHasChanged && <Message role="assistant" content={incomingMessage}/>}
-                        </div>
-                        {!!incomingMessage && !!routeHasChanged && <Message
-                            role="notice"
-                            content="Only one message at a time? Please allow any responses to complete before sending
+                        {!allMessages.length && !incomingMessage &&
+                            <div className="m-auto flex justify-center items-center text-center">
+                                <div>
+                                    <FontAwesomeIcon icon={faRobot} className="text-6xl text-emerald-200"/>
+                                    <h1 className="text-4xl font-bold text-white/50 mt-2">Ask me a question</h1>
+                                </div>
+                            </div>
+                        }
+                        {!!allMessages.length && (
+                            <div className="mb-auto ">
+                                {allMessages.map(item => (
+                                    <Message key={item._id} role={item.role} content={item.content}/>
+                                ))}
+                                {!!incomingMessage && !routeHasChanged &&
+                                    <Message role="assistant" content={incomingMessage}/>}
+                                {!!incomingMessage && !!routeHasChanged && <Message
+                                    role="notice"
+                                    content="Only one message at a time? Please allow any responses to complete before sending
                             another message"
-                        />}
-
+                                />}
+                            </div>
+                        )}
                     </div>
                     <footer className="bg-gray-800 p-10">
                         <form onSubmit={handleSubmit}>
@@ -144,13 +156,32 @@ export const getServerSideProps = async (ctx) => {
     const chatId = ctx.params?.chatId?.[0] || null;
 
     if (chatId) {
+        let objectId;
+
+        try{
+            objectId = new ObjectId(chatId)
+        }catch (e) {
+            return {
+                redirect: {
+                    destination: "/chat"
+                }
+            }
+        }
         const {user} = await getSession(ctx.req, ctx.res);
         const client = await clientPromise;
         const db = client.db("ChattyPete");
         const chat = await db.collection("chats").findOne({
             userId: user.sub,
-            _id: new ObjectId(chatId)
+            _id: objectId
         })
+
+        if(!chat){
+            return {
+                redirect: {
+                    destination: "/chat"
+                }
+            }
+        }
         return {
             props: {
                 chatId,
@@ -165,6 +196,4 @@ export const getServerSideProps = async (ctx) => {
     return {
         props: {}
     }
-
-
 }

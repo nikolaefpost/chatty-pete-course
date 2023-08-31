@@ -21,7 +21,6 @@ function App({ Component, pageProps }) {
         <main className={`${outfit.variable} font-body`}>
             <Component {...pageProps} />
         </main>
-      <Component {...pageProps} />
     </UserProvider>
   );
 }
