@@ -78,7 +78,6 @@ const ChatPage = ({chatId, title, messages = []}) => {
         const reader = data.getReader();
         let content = "";
         await streamReader(reader, (message) => {
-            console.log("MESSAGE", message);
             if (message.event === "newChatId") {
                 setNewChatId(message.content);
             } else {
