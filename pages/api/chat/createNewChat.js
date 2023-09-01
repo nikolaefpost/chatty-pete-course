@@ -1,6 +1,5 @@
 import {getSession} from "@auth0/nextjs-auth0";
 import clientPromise from "lib/mongodb"
-import {log} from "next/dist/server/typescript/utils";
 
 export default async function handler(req, res){
     try{
